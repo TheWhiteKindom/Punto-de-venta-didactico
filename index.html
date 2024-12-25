@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Punto de Venta - Mostrador Digital</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            text-align: center;
+            padding: 50px;
+            margin: 0;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        #total {
+            font-size: 40px;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            display: inline-block;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            color: #27ae60;
+        }
+
+        button {
+            font-size: 18px;
+            padding: 12px 25px;
+            margin: 10px;
+            cursor: pointer;
+            border: none;
+            background-color: #2980b9;
+            color: white;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #3498db;
+        }
+
+        /* Estilo para alinear los campos en una fila */
+        .fila-producto {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .fila-producto > div {
+            flex: 1;
+            margin-right: 10px;
+        }
+
+        .fila-producto > div:last-child {
+            margin-right: 0;
+        }
+
+        /* Ajustar el tamaño de los campos para que estén más alineados */
+        #producto-nombre, #descuento, #precio-producto, #cantidad-producto {
+            font-size: 18px;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            display: inline-block;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            letter-spacing: 1px;
+            margin-top: 10px;
+        }
+
+        input[type="number"], input[type="text"] {
+            font-size: 18px;
+            padding: 10px;
+            width: 180px;
+            margin-top: 10px;
+            background-color: #ecf0f1;
+            color: #333;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        /* Espaciado general */
+        .container {
+            margin-top: 30px;
+        }
+
+        /* Estilo de la casilla de descripción que ahora estará abajo */
+        #descripcion-producto {
+            font-size: 18px;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            display: inline-block;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        /* Reloj Digital */
+        #reloj {
+            margin-top: 20px;
+            font-size: 20px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 8px;
+            display: inline-block;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Punto de Venta - Mostrador Digital</h1>
+
+    <!-- Total de la venta -->
+    <div id="total">$0.00</div>
+
+    <div class="container">
+        <!-- Fila de producto con nombre, descuento, precio y cantidad -->
+        <div class="fila-producto">
+            <div id="producto-nombre">
+                Nombre del Producto: <input type="text" id="nombre-producto" placeholder="Producto" oninput="mostrarDetallesProducto()" />
+            </div>
+
+            <div id="descuento">
+                Descuento (%): <input type="number" id="descuento-porcentaje" value="0" min="0" max="100" />
+            </div>
+
+            <div id="precio-producto">
+                Precio del Producto: $<input type="number" id="precio" step="0.01" value="0" />
+            </div>
+
+            <div id="cantidad-producto">
+                Cantidad: <input type="number" id="cantidad" value="1" min="1" />
+            </div>
+        </div>
+
+        <!-- Casilla de descripción que está abajo de los otros campos -->
+        <div id="descripcion-producto">
+            Descripción: <input type="text" id="descripcion" placeholder="Descripción" />
+        </div>
+
+        <button onclick="agregarProducto()">Agregar Producto</button>
+        <button onclick="resetearVenta()">Resetear Venta</button>
+        <button onclick="agregarProductoADatabase()">Agregar Producto a la Base de Datos</button>
+    </div>
+
+    <!-- Reloj Digital -->
+    <div id="reloj">00:00:00 AM</div>
+
+    <script>
+        // Variables
+        let totalVenta = 0;
+        let productos = [];
+        let baseDeDatos = JSON.parse(localStorage.getItem("productosDB")) || {}; // Cargar productos desde LocalStorage
+
+        // Función para agregar el producto al total
+        function agregarProducto() {
+            const nombreProducto = document.getElementById("nombre-producto").value.trim();
+            const precioProducto = parseFloat(document.getElementById("precio").value);
+            const cantidadProducto = parseInt(document.getElementById("cantidad").value);
+            
+            if (nombreProducto === "" || isNaN(precioProducto) || precioProducto <= 0 || isNaN(cantidadProducto) || cantidadProducto <= 0) {
+                alert("Por favor, ingrese un nombre, precio y cantidad válidos para el producto.");
+                return;
+            }
+
+            // Agregar producto al listado
+            productos.push({ nombre: nombreProducto, precio: precioProducto, cantidad: cantidadProducto });
+            totalVenta += precioProducto * cantidadProducto;
+
+            // Aplicar descuento si existe
+            aplicarDescuento();
+
+            // Limpiar los campos de entrada
+            document.getElementById("nombre-producto").value = "";
+            document.getElementById("precio").value = 0;
+            document.getElementById("cantidad").value = 1;
+            document.getElementById("descripcion").value = "";
+        }
+
+        // Función para agregar el producto a la base de datos (LocalStorage)
+        function agregarProductoADatabase() {
+            const nombreProducto = document.getElementById("nombre-producto").value.trim();
+            const precioProducto = parseFloat(document.getElementById("precio").value);
+            const descripcionProducto = document.getElementById("descripcion").value.trim();
+
+            if (nombreProducto === "" || isNaN(precioProducto) || precioProducto <= 0 || descripcionProducto === "") {
+                alert("Por favor, ingrese todos los campos correctamente.");
+                return;
+            }
+
+            // Agregar el producto a la base de datos
+            baseDeDatos[nombreProducto] = {
+                precio: precioProducto,
+                descripcion: descripcionProducto
+            };
+
+            // Guardar la base de datos en LocalStorage
+            localStorage.setItem("productosDB", JSON.stringify(baseDeDatos));
+
+            alert("Producto agregado a la base de datos.");
+
+            // Limpiar los campos de entrada
+            document.getElementById("nombre-producto").value = "";
+            document.getElementById("precio").value = 0;
+            document.getElementById("descripcion").value = "";
+        }
+
+        // Función para mostrar el precio y la descripción cuando el nombre del producto cambia
+        function mostrarDetallesProducto() {
+            const nombreProducto = document.getElementById("nombre-producto").value.trim();
+
+            if (baseDeDatos[nombreProducto]) {
+                // Mostrar el precio y la descripción solo si el producto existe en la base de datos
+                document.getElementById("precio").value = baseDeDatos[nombreProducto].precio;
+                document.getElementById("descripcion").value = baseDeDatos[nombreProducto].descripcion;
+            } else {
+                // Limpiar el precio y la descripción si no existe el producto
+                document.getElementById("precio").value = 0;
+                document.getElementById("descripcion").value = "";
+            }
+        }
+
+        // Función para resetear la venta
+        function resetearVenta() {
+            totalVenta = 0;
+            productos = [];
+            document.getElementById("total").textContent = "$0.00";
+            document.getElementById("nombre-producto").value = "";
+            document.getElementById("precio").value = 0;
+            document.getElementById("cantidad").value = 1;
+            document.getElementById("descripcion").value = "";
+            document.getElementById("descuento-porcentaje").value = 0;
+        }
+
+        // Función para aplicar descuento
+        function aplicarDescuento() {
+            const descuentoPorcentaje = parseFloat(document.getElementById("descuento-porcentaje").value);
+            if (!isNaN(descuentoPorcentaje) && descuentoPorcentaje > 0 && descuentoPorcentaje <= 100) {
+                totalVenta = totalVenta * (1 - descuentoPorcentaje / 100);
+            }
+            document.getElementById("total").textContent = "$" + totalVenta.toFixed(2);
+        }
+
+        // Función para actualizar el reloj
+        function actualizarReloj() {
+            const fecha = new Date();
+            const hora = fecha.getHours().toString().padStart(2, '0');
+            const minutos = fecha.getMinutes().toString().padStart(2, '0');
+            const segundos = fecha.getSeconds().toString().padStart(2, '0');
+            const ampm = hora >= 12 ? 'PM' : 'AM';
+            const horaFormateada = `${hora}:${minutos}:${segundos} ${ampm}`;
+
+            document.getElementById("reloj").textContent = horaFormateada;
+        }
+
+        // Actualizar el reloj cada segundo
+        setInterval(actualizarReloj, 1000);
+        actualizarReloj();  // Inicializar el reloj inmediatamente
+    </script>
+
+</body>
+</html>
